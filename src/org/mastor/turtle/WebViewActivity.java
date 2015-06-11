@@ -13,23 +13,22 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.ContentValues;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.view.WindowManager;
-import android.view.WindowManager.LayoutParams;
-import android.view.WindowManager.LayoutParams.*;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.webkit.WebSettings.LayoutAlgorithm;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
 import android.view.View;
-import android.os.Build.VERSION;
-import android.os.Build.VERSION_CODES;
-import android.os.Build.VERSION_CODES.*;
-
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 
 
 /**
@@ -37,8 +36,8 @@ import android.os.Build.VERSION_CODES.*;
  * @author Alex Tam
  *
  */
-public class WebViewActicvity extends Activity{
-	private WebView wv_main;
+public class WebViewActivity extends Activity{
+	private WebView wv_main = null;
 	//MAP - 存放要显示的图片信息
 	private  ConcurrentHashMap<String, String> map = new  ConcurrentHashMap<String, String>();
 	//图片文件夹
@@ -71,28 +70,56 @@ public class WebViewActicvity extends Activity{
 
 		setContentView(R.layout.webview_act_main);
 		//数据库操作类
-		helper = new DAOHelper(WebViewActicvity.this);
-		
+		helper = new DAOHelper(WebViewActivity.this);
+
+		//if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+			//if (0 != (getApplicationInfo().flags &= ApplicationInfo.FLAG_DEBUGGABLE)) {
+			//}
+		//}
+
 		start();
 	}
-	
-	private void start()
-	{
-		wv_main = (WebView)findViewById(R.id.wv_main);
-		
-		wv_main.getSettings().setJavaScriptEnabled(true);
+
+	private void start() {
+		wv_main = (WebView) findViewById(R.id.wv_main);
+
+		wv_main.setWebChromeClient(new WebChromeClient() {
+			public void onConsoleMessage(String message, int lineNumber, String sourceID) {
+				Log.d("MyApplication", message + " -- From line "
+						+ lineNumber + " of "
+						+ sourceID);
+			}
+		});
+
+		wv_main.setWebContentsDebuggingEnabled(true);
+
+		//wv_main.getSettings().setJavaScriptEnabled(true);
 		wv_main.setWebViewClient(new WebViewClient());
 		// 单列显示
 		wv_main.getSettings().setLayoutAlgorithm(LayoutAlgorithm.SINGLE_COLUMN);
-		// 添加JavaScript接口
-		// "mylistner" 这个名字不能写错,
-		// 因为在WebView加载的HTML中的JavaScript方法会回调mylistner里面的方法,所以两者名字要一致
-		wv_main.addJavascriptInterface(new JavascriptInterface(WebViewActicvity.this), "mylistner");
+
+		WebSettings webSettings = wv_main.getSettings();
+		//enable JavaScript in webview
+		webSettings.setJavaScriptEnabled(true);
+		//Enable and setup JS localStorage
+		webSettings.setDomStorageEnabled(true);
+		//those two lines seem necessary to keep data that were stored even if the app was killed.
+		webSettings.setDatabaseEnabled(true);
+		webSettings.setDatabasePath("/data/data/" + wv_main.getContext().getPackageName() + "/databases/");
+
+		wv_main.addJavascriptInterface(new JavascriptInterface(WebViewActivity.this), "mylistner");
+		wv_main.addJavascriptInterface(new LocalStorageJavaScriptInterface(getApplicationContext()), "LocalStorage");
+
 		// 为了模拟向服务器请求数据,加载HTML, 我已提前写好一份,放在本地直接加载
-		wv_main.loadUrl("http://www.baidu.com");
+		wv_main.loadUrl("http://mastor.mooo.com:3000/menu/");
 	}
-	
-	
+
+	public void onBackPressed(){
+		if(wv_main !=null){
+			wv_main.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_ESCAPE));
+		}
+	}
+
 	private class JavascriptInterface 
 	{
 		private Context context;
@@ -101,7 +128,7 @@ public class WebViewActicvity extends Activity{
 		{
 			this.context = context;
 		}
-		
+
 		//该方法被回调替换页面中的默认图片
 		//@android.webkit.JavascriptInterface
 		public String replaceimg(String imgPosition , String imgUrl, String imgTagId)
@@ -217,7 +244,7 @@ public class WebViewActicvity extends Activity{
 			}
 			else
 			{
-				Log.e("WebViewActicvity error", "DownLoadTask has a invalid imgPath...");
+				Log.e("WebViewActivity error", "DownLoadTask has a invalid imgPath...");
 			}
 			
 		}
@@ -236,9 +263,97 @@ public class WebViewActicvity extends Activity{
         inStream.close();  
         return outStream.toByteArray();  
     }
-	
-	
-	
+
+
+	private class LocalStorageJavaScriptInterface {
+		private Context mContext;
+		private LocalStorage localStorageDBHelper;
+		private SQLiteDatabase database;
+
+		LocalStorageJavaScriptInterface(Context c) {
+			mContext = c;
+			localStorageDBHelper = LocalStorage.getInstance(mContext);
+		}
+
+		/**
+		 * This method allows to get an item for the given key
+		 * @param key : the key to look for in the local storage
+		 * @return the item having the given key
+		 */
+		//@JavascriptInterface
+		public String getItem(String key)
+		{
+			String value = null;
+			if(key != null)
+			{
+				database = localStorageDBHelper.getReadableDatabase();
+				Cursor cursor = database.query(LocalStorage.LOCALSTORAGE_TABLE_NAME,
+						null,
+						LocalStorage.LOCALSTORAGE_ID + " = ?",
+						new String [] {key},null, null, null);
+				if(cursor.moveToFirst())
+				{
+					value = cursor.getString(1);
+				}
+				cursor.close();
+				database.close();
+			}
+			return value;
+		}
+
+		/**
+		 * set the value for the given key, or create the set of datas if the key does not exist already.
+		 * @param key
+		 * @param value
+		 */
+		//@JavascriptInterface
+		public void setItem(String key,String value)
+		{
+			if(key != null && value != null)
+			{
+				String oldValue = getItem(key);
+				database = localStorageDBHelper.getWritableDatabase();
+				ContentValues values = new ContentValues();
+				values.put(LocalStorage.LOCALSTORAGE_ID, key);
+				values.put(LocalStorage.LOCALSTORAGE_VALUE, value);
+				if(oldValue != null)
+				{
+					database.update(LocalStorage.LOCALSTORAGE_TABLE_NAME, values, LocalStorage.LOCALSTORAGE_ID + "='" + key + "'", null);
+				}
+				else
+				{
+					database.insert(LocalStorage.LOCALSTORAGE_TABLE_NAME, null, values);
+				}
+				database.close();
+			}
+		}
+
+		/**
+		 * removes the item corresponding to the given key
+		 * @param key
+		 */
+		//@JavascriptInterface
+		public void removeItem(String key)
+		{
+			if(key != null)
+			{
+				database = localStorageDBHelper.getWritableDatabase();
+				database.delete(LocalStorage.LOCALSTORAGE_TABLE_NAME, LocalStorage.LOCALSTORAGE_ID + "='" + key + "'", null);
+				database.close();
+			}
+		}
+
+		/**
+		 * clears all the local storage.
+		 */
+		//@JavascriptInterface
+		public void clear()
+		{
+			database = localStorageDBHelper.getWritableDatabase();
+			database.delete(LocalStorage.LOCALSTORAGE_TABLE_NAME, null, null);
+			database.close();
+		}
+	}
 	
 	
 }

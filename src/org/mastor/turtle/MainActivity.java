@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
 			public void onClick(View v) {
 				if(createCacheFolder())	//先检测是否成功创建本地缓存文件夹
 				{
-					Intent goIntent = new Intent(MainActivity.this,WebViewActicvity.class);
+					Intent goIntent = new Intent(MainActivity.this,WebViewActivity.class);
 					startActivity(goIntent);
 				}
 			}
