@@ -111,7 +111,7 @@ public class WebViewActivity extends Activity{
 		wv_main.addJavascriptInterface(new LocalStorageJavaScriptInterface(getApplicationContext()), "LocalStorage");
 
 		// 为了模拟向服务器请求数据,加载HTML, 我已提前写好一份,放在本地直接加载
-		wv_main.loadUrl("http://mastor.mooo.com:3000/menu/");
+		wv_main.loadUrl("http://192.168.11.3:3000/menu/");
 	}
 
 	public void onBackPressed(){

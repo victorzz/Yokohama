@@ -1,0 +1,42 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion "23.0.0 rc2"
+    lintOptions {
+        abortOnError false
+    }
+    defaultConfig {
+        applicationId "org.mastor.turtle"
+        minSdkVersion 10
+        targetSdkVersion 19
+    }
+    buildTypes {
+
+        TurtleDebug {
+            debuggable true
+            jniDebuggable false
+            renderscriptDebuggable true
+            minifyEnabled false
+            pseudoLocalesEnabled false
+            zipAlignEnabled false
+        }
+        Turtle {
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
+            minifyEnabled true
+            zipAlignEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
+    productFlavors {
+    }
+}
+
+dependencies {
+    compile 'com.android.support:support-v4:19.1.0'
+}
