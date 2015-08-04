@@ -30,6 +30,8 @@ import android.view.View;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import android.media.AudioManager;
+import android.content.Context;
 
 /**
  * Created on 5/21/2015
@@ -47,11 +49,16 @@ public class WebViewActivity extends Activity{
 	private DAOHelper helper;
 	//存放图片下载器信息
 	private List<String> taskArray = new ArrayList<String>();
-	
+	private AudioManager mAudioManager;
+	private Context mContext;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) 
 	{
+
+
+		mContext = getApplicationContext();
+
 		super.onCreate(savedInstanceState);
 		/*
 		if (VERSION.SDK_INT >= 19) {
@@ -76,8 +83,10 @@ public class WebViewActivity extends Activity{
 			//if (0 != (getApplicationInfo().flags &= ApplicationInfo.FLAG_DEBUGGABLE)) {
 			//}
 		//}
-
+		mAudioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
+		mAudioManager.loadSoundEffects();
 		start();
+
 	}
 
 	private void start() {
